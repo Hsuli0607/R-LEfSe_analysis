@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.textClipping
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+renv/
+.Renviron
+
+# R packages
+*.tar.gz
+
+
+# Data files
+/data/
+/ALL*.csv
+/ALL*.numbers
+/Lfese data - ALL.csv
+/zeller14.rda
+
+# Output
+/reports/
+/models/
+/plot.pdf
+/plot.png
+
+# IDE settings
+.vscode/
+*.code-workspace
+
