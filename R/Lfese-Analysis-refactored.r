@@ -89,6 +89,12 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     strict = strict,
     multigrp_strat = TRUE
   )
+  
+  # Extract the marker data to link taxa to their enriched group
+  marker_data <- data.frame(marker_table(lefse_result))
+  marker_data_enrich <- marker_data %>%
+    select(OTU = feature, enrich_group)
+
   ### Plot
   # Prepare data for plotting the tree and associated bar plots
   Psq <- physeq_filtered
@@ -96,19 +102,20 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   taxdf <- as.data.frame(tax_table(Psq))
   taxdf$OTU <- rownames(taxdf) # Use rownames as the OTU identifier
 
+
   # Create a single, comprehensive data frame for plotting
   plot_data <- psmelt(Psq) %>% # Using psmelt to get a long-form data frame
     group_by(OTU) %>%
     summarise(mean_abundance = mean(log10(Abundance + 1)), .groups = 'drop') %>%
     left_join(taxdf, by = "OTU") %>%
     # Clean up Phylum names for the legend
-    mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__", "__"), "Unknown", Phylum),
-           Phylum = stringr::str_remove(Phylum, "^D_1__"))
+    mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__", "__"), "Unknown", Phylum)) %>%
+    # Add the enrichment group information for significant taxa
+    left_join(marker_data_enrich, by = "OTU")
 
   # Build ggtree with a fan layout and add taxon data
   p <- ggtree(tree, layout = "fan", open.angle = 20, branch.length = "none") %<+% plot_data +
-    geom_tippoint(aes(color = Phylum), linewidth = 1.5, show.legend = FALSE)
-
+    geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE)
   # Start with a completely blank theme and add only what is needed
   p <- p + theme_void() +
     theme(
@@ -140,11 +147,25 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
       grid.params = list(linetype = "dotted", color = "grey80") # Add grid lines
     )
 
+  # Add a second layer to show the enrichment group for each significant taxon
+  p <- p +
+    geom_fruit(
+      geom = geom_tile,
+      mapping = aes(
+        y = OTU,
+        fill = enrich_group # Color tiles by the enrichment group
+      ),
+      width = 0.1,
+      offset = 0.08 # Adjust offset to place it next to the bar plot
+    ) +
+    # Add a new color scale for the enrichment groups
+    ggnewscale::new_scale_fill() +
+    scale_fill_viridis_d(name = "Enriched Group", na.value = "white", option = "C")
+
   # Add final theming and a single, styled legend for Phylum
   p <- p +
     labs(fill = "Phyla") + # Set the legend title
     guides(fill = guide_legend(ncol = 1)) # Ensure single-column legend
-
     return(p)
 }
 ### Run the function and print and save plot:
