@@ -84,24 +84,26 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   taxdf$OTU <- rownames(taxdf) # Use rownames as the OTU identifier
 
   # Create a single, comprehensive data frame for plotting
-  plot_data <- psmelt(Psq) %>%
+  plot_data <- psmelt(Psq) %>% # Using psmelt to get a long-form data frame
     group_by(OTU) %>%
     summarise(mean_abundance = mean(Abundance), .groups = 'drop') %>%
     left_join(taxdf, by = "OTU") %>%
-    mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__"), "Unknown", Phylum),
-           Phylum = stringr::str_remove(Phylum, "D_1__"))
+    # Clean up Phylum names for the legend
+    mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__", "__"), "Unknown", Phylum),
+           Phylum = stringr::str_remove(Phylum, "^D_1__"))
 
   # build ggtree with a more open layout and add taxon data
-  p <- ggtree(tree, layout = "fan", open.angle = 20) %<+% plot_data +
+  p <- ggtree(tree, layout = "fan", open.angle = 20, branch.length = "none") %<+% plot_data +
     # Add tip points colored by Phylum, but hide their legend
-    geom_tippoint(aes(color = Phylum), size = 1.5) +
+    geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) +
     theme(
       legend.position = "right",
       legend.title = element_text(size = 11, face = "bold"),
       legend.text = element_text(size = 9),
       legend.key.size = unit(0.5, "cm"),
       panel.background = element_rect(fill = "beige", colour = "beige"),
-      panel.grid.major = element_line(colour = "grey90")
+      # Remove the main panel grid to avoid overlap with geom_fruit grid
+      panel.grid.major = element_blank()
     )
 
   # add the abundance bar plot, now colored by Phylum
@@ -119,15 +121,16 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
       axis.params = list(
         axis = "x",
         text.size = 2,
-        title = "Mean Abundance"
+        title = "Mean Abundance",
+        vjust = 1
       ),
-      grid.params = list()
+      grid.params = list(linetype = "dotted", color = "grey80") # Add grid lines here
     )
 
   # Add final theming and a single, styled legend for Phylum
   p <- p +
-    labs(fill = "Phylum", color = "Phylum") +
-    guides(color = "none", fill = guide_legend(ncol = 1, keywidth = 0.8, keyheight = 0.8))
+    labs(fill = "Phyla") +
+    guides(fill = guide_legend(ncol = 1))
 
   return(p)
 }
