@@ -92,3 +92,9 @@ p <- p +
 
 # Print plot
 print(p)
+
+# save plot to 
+gsave("reports/figures/Figure-10.png",
+  plot = p, width = 12, height = 12, dpi = 300
+)
+ 
