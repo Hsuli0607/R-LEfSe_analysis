@@ -43,10 +43,8 @@ melt_df <- psmelt(mergedGP)
 # Rename OTU to label so geom_fruit can match to tree tip labels.
 # Note: Don't include Phylum and Order here since they're already in tree data via %<+% taxdf
 melt_simple <- melt_df %>%
-melt_simple <- melt_df %>% # Corrected data preparation
   filter(Abundance < 120) %>%
   select(label = OTU, Sample = Sample, val = Abundance)
-  select(label = OTU, Sample = Sample, val = Abundance, Phylum)
 
 # If your grouping for boxplots is by SampleType, use Sample (which is the merged SampleType).
 # If you prefer grouping by something else, change group mapping below.
@@ -63,10 +61,8 @@ p <- p +
     mapping = aes(
       y = label,
       x = val,
-      group = Sample,   # one box per merged sample type per tip
-      fill = Phylum     # Use fill for boxplots
       group = label, # Group by taxon to get one boxplot per tip
-      fill = Phylum  # Color the single boxplot by Phylum
+      fill = Phylum  # Use Phylum for fill color
     ),
     linewidth = 0.2,
     outlier.size = 0.5,
