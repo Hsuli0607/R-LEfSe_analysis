@@ -82,7 +82,7 @@ p <- p +
 p <- p +
   labs(fill = "Phyla") + # Set the title for the boxplot legend
   # Make the legend keys match the boxplots (colored fill with a black outline)
-  guides(fill = guide_legend(override.aes = list(color = "black"))) +
+  guides(fill = guide_legend(ncol = 1, override.aes = list(color = "black"))) +
   theme(
     legend.position = "right",
     legend.title = element_text(size = 11, face = "bold"),
