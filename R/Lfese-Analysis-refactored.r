@@ -81,17 +81,20 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   Psq <- physeq_filtered
   tree <- phy_tree(Psq)
   taxdf <- as.data.frame(tax_table(Psq))
+  taxdf$OTU <- rownames(taxdf) # Use rownames as the OTU identifier
 
   # Create a single, comprehensive data frame for plotting
   plot_data <- psmelt(Psq) %>%
     group_by(OTU) %>%
     summarise(mean_abundance = mean(Abundance), .groups = 'drop') %>%
-    left_join(taxdf %>% mutate(OTU = rownames(.)), by = "OTU")
+    left_join(taxdf, by = "OTU") %>%
+    mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__"), "Unknown", Phylum),
+           Phylum = stringr::str_remove(Phylum, "D_1__"))
 
   # build ggtree with a more open layout and add taxon data
-  p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% plot_data +
+  p <- ggtree(tree, layout = "fan", open.angle = 20) %<+% plot_data +
     # Add tip points colored by Phylum, but hide their legend
-    geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) +
+    geom_tippoint(aes(color = Phylum), size = 1.5) +
     theme(
       legend.position = "right",
       legend.title = element_text(size = 11, face = "bold"),
@@ -111,20 +114,20 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
         x = mean_abundance,
         fill = Phylum
       ),
-      width = 0.38, # Use 'width' instead of 'pwidth'
+      width = 0.38,
       orientation = "y",
       axis.params = list(
         axis = "x",
         text.size = 2,
         title = "Mean Abundance"
       ),
-      grid.params = list(linetype = "dotted")
+      grid.params = list()
     )
 
   # Add final theming and a single, styled legend for Phylum
   p <- p +
-    labs(fill = "Phylum") +
-    guides(fill = guide_legend(ncol = 1, keywidth = 0.8, keyheight = 0.8))
+    labs(fill = "Phylum", color = "Phylum") +
+    guides(color = "none", fill = guide_legend(ncol = 1, keywidth = 0.8, keyheight = 0.8))
 
   return(p)
 }
