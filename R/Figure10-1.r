@@ -82,7 +82,7 @@ p <- p +
 p <- p +
   # Use the same aesthetic for color and fill to unify the legend
   labs(color = "Phyla", fill = "Phyla") +
-  guides(fill = guide_legend(ncol = 1), color = guide_legend(ncol = 1)) +
+  guides(fill = guide_legend(ncol = 1), color = "none") +
   theme(
     legend.position = "right",
     legend.title = element_text(size = 11, face = "bold"),
