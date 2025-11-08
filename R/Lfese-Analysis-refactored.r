@@ -28,7 +28,7 @@ library(ggplot2)
 #' @export
 run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
                                         lda_cutoff = 3,
-                                        strict = 1,
+                                        strict = "1",
                                         rarefy_seed = 394582,
                                         abundance_filter_threshold = 1000) {
 
@@ -76,56 +76,58 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     group = "Group", lda_cutoff = lda_cutoff, strict = strict,
     multigrp_strat = TRUE
   )
+
   ### Plot
   # Prepare data for plotting
-  marker_table <- lefse_result@marker_table
   Psq <- physeq_filtered
   tree <- phy_tree(Psq)
   taxdf <- as.data.frame(tax_table(Psq))
-  taxdf$node <- row.names(taxdf)
-  # get data from phyloseq object
-  dat <- psmelt(Psq)
-  # get the relative abundance
-  dat$relab <- dat$Abundance / sample_sums(Psq)[dat$Sample]
-  # join the tax and lefse results
-  dat <- dat %>%
-    left_join(taxdf, by = c("OTU" = "node")) %>%
-    left_join(marker_table, by = c("OTU" = "feature"))
-  # convert character to factor
-  dat$Group <- as.factor(dat$Group)
+
+  # Calculate mean abundance for the bar plot layer
+  abundance_data <- psmelt(Psq) %>%
+    group_by(OTU) %>%
+    summarise(mean_abundance = mean(Abundance))
+
   # build ggtree
-  p <- ggtree(tree, layout = "fan") +
+  p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% taxdf +
+    geom_tippoint(aes(color = Phylum), size = 1.5) +
     theme(
       legend.position = "right",
-      legend.title = element_text(size = 11, face = "bold"),
+      legend.title = element_text(size = 9, face = "bold"),
       legend.text = element_text(size = 9),
       legend.key.size = unit(0.5, "cm"),
-      panel.background = element_rect(fill = "beige", colour = "beige"),
+      panel.background = element_rect(fill = "#F5F5DC", colour = "#F5F5DC"), # Beige color
       panel.grid.major = element_line(colour = "grey90")
     )
+
   # add the abundance boxplot
   p <- p +
     geom_fruit(
-      data = dat,
-      geom = geom_boxplot,
+      data = abundance_data,
+      geom = geom_col,
       mapping = aes(
         y = OTU,
-        x = relab,
-        fill = Group
+        x = mean_abundance
       ),
-      outlier.size = 0,
-      outlier.stroke = 0,
-      outlier.shape = NA,
+      fill = "grey20", # Set a static fill color for the bars
+      orientation = "y",
+      pwidth = 0.3,
       axis.params = list(
         axis = "x",
         text.size = 2,
-        title = "Relative Abundance"
+        title = "Mean Abundance"
       ),
       grid.params = list()
     )
+
+  # Add final theming and legend control
+  p <- p +
+    labs(color = "Phylum") +
+    guides(color = guide_legend(override.aes = list(size = 3), ncol = 1))
+
   return(p)
 }
 # Example of how to run the function:
-plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
-print(plot)
-ggsave("reports/figures/plot.png", plot = plot, width = 12, height = 12, dpi = 300)
+plot_result <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
+print(plot_result)
+ggsave("reports/figures/plot.png", plot = plot_result, width = 12, height = 12, dpi = 300)
