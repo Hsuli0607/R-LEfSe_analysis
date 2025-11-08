@@ -20,19 +20,21 @@ library(ggplot2)
 # @param lda_cutoff LDA score cutoff for LEfSe analysis. Default is 3.
 # @param strict Strictness of the LEfSe analysis. Default is "1".
 # @param rarefy_seed Seed for reproducibility of rarefaction. Default is 394582.
+# @param transform The transformation to apply to the data before analysis. Default is "log10p".
 # @param abundance_filter_threshold Threshold for filtering taxa by abundance. Default is 1000.
 # return A ggtree plot object P.
 
 # Instructioins how to run this function:
 # Simply call it with the desired parameters. 
-# plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv", lda_cutoff = 3.5)
+# plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
 # print(plot)
  
 run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
                                         lda_cutoff = 3,
                                         strict = "1",
                                         rarefy_seed = 394582,
-                                        abundance_filter_threshold = 1000) {
+                                        abundance_filter_threshold = 1000,
+                                        transform = "log10p") {
 
   ### Create the phyloseq object from the CSV file
   # This block reads the raw data, parses it into abundance, taxonomy, and metadata,
@@ -81,7 +83,10 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
 
   ### Run LEfSe analysis by using run_lefse
   lefse_result <- run_lefse(physeq_filtered,
-    group = "Group", lda_cutoff = lda_cutoff, strict = strict,
+    group = "Group",
+    transform = transform,
+    lda_cutoff = lda_cutoff,
+    strict = strict,
     multigrp_strat = TRUE
   )
   ### Plot
@@ -94,7 +99,7 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   # Create a single, comprehensive data frame for plotting
   plot_data <- psmelt(Psq) %>% # Using psmelt to get a long-form data frame
     group_by(OTU) %>%
-    summarise(mean_abundance = mean(Abundance), .groups = 'drop') %>%
+    summarise(mean_abundance = mean(log10(Abundance + 1)), .groups = 'drop') %>%
     left_join(taxdf, by = "OTU") %>%
     # Clean up Phylum names for the legend
     mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__", "__"), "Unknown", Phylum),
@@ -129,7 +134,7 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
       axis.params = list(
         axis = "x",
         text.size = 2,
-        title = "Mean Abundance",
+        title = "Mean Abundance (log10)",
         vjust = 1
       ),
       grid.params = list(linetype = "dotted", color = "grey80") # Add grid lines
@@ -143,6 +148,6 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     return(p)
 }
 ### Run the function and print and save plot:
-plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv") 
+plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
 print(plot)
 ggsave("reports/figures/plot.png", plot = plot, width = 12, height = 12, dpi = 300)
