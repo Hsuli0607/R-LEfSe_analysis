@@ -51,7 +51,7 @@ melt_simple <- melt_df %>%
 
 # Build ggtree and attach taxon metadata with %<+%
 p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% taxdf +
-  geom_tippoint(aes(color = Phylum), size = 1.5)
+  geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) # Points are colored, but don't generate a legend
 
 # Add the boxplot "fruit". Use data that contains 'label' column matching tip labels.
 p <- p +
@@ -80,9 +80,9 @@ p <- p +
 
 # Final theming
 p <- p +
-  # Use the same aesthetic for color and fill to unify the legend
-  labs(color = "Phyla", fill = "Phyla") +
-  guides(fill = guide_legend(ncol = 1), color = "none") +
+  labs(fill = "Phyla") + # Set the title for the boxplot legend
+  # Make the legend keys match the boxplots (colored fill with a black outline)
+  guides(fill = guide_legend(override.aes = list(color = "black"))) +
   theme(
     legend.position = "right",
     legend.title = element_text(size = 11, face = "bold"),
