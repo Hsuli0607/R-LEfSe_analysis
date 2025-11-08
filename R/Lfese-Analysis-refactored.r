@@ -1,6 +1,5 @@
-# File updated to resolve potential environment caching issues.
 ### Load Required Libraries ###
-# This script assumes all required packages have been installed.
+# This script assumes all required packages are installed.
 # Use install.packages("package_name") or BiocManager::install("package_name") if any are missing.
 library(phyloseq)
 library(microbiomeMarker) # For LEfSe analysis
@@ -11,21 +10,24 @@ library(ape)
 library(ggtree)
 library(ggtreeExtra) # To support the outer rings of a tree in a circular layout
 library(ggplot2)
-#' Run LEfSe Analysis and Generate a Plot
-#'
-#' This function takes a path to a CSV file containing microbiome data,
-#' performs LEfSe analysis, and generates a fan tree plot with boxplots.
-#'
-#' @param input_path Path to the input CSV file. The CSV should have an 'index' column
-#'   with sample names, a 'Group' column for sample groups, and the rest of the
-#'   columns as taxa with their abundances.
-#' @param lda_cutoff LDA score cutoff for LEfSe analysis. Default is 3.
-#' @param strict Strictness of the LEfSe analysis. Default is "1".
-#' @param rarefy_seed Seed for reproducibility of rarefaction. Default is 394582.
-#' @param abundance_filter_threshold Threshold for filtering taxa by abundance. Default is 1000.
-#'
-#' @return A ggtree plot object.
-#' @export
+
+# This function takes a path to a CSV file containing microbiome data,
+# performs LEfSe analysis, and generates a fan tree plot with barplots.
+
+# @param input_path Path to the input CSV file. 
+# The CSV should have an 'index' column with sample names, a 'Group' column for sample groups,
+# and the rest of the columns as taxa with their abundances.
+# @param lda_cutoff LDA score cutoff for LEfSe analysis. Default is 3.
+# @param strict Strictness of the LEfSe analysis. Default is "1".
+# @param rarefy_seed Seed for reproducibility of rarefaction. Default is 394582.
+# @param abundance_filter_threshold Threshold for filtering taxa by abundance. Default is 1000.
+# return A ggtree plot object P.
+
+# Instructioins how to run this function:
+# Simply call it with the desired parameters. 
+# plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv", lda_cutoff = 3.5)
+# print(plot)
+ 
 run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
                                         lda_cutoff = 3,
                                         strict = "1",
@@ -34,7 +36,7 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
 
   ### Create the phyloseq object from the CSV file
   # This block reads the raw data, parses it into abundance, taxonomy, and metadata,
-  # and constructs the phyloseq object required for all subsequent analysis.
+  # and constructs the phyloseq object required for subsequent analysis.
   # 1. Read the data using data.table for speed
   raw_data_in <- fread(input_path)
   # 2. Separate sample metadata
@@ -65,6 +67,12 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   # Create an unrooted tree from taxa abundance profiles
   taxa_dist <- dist(otu_tab)
   phy_tree <- ape::nj(taxa_dist)
+
+  # Explicitly remove branch lengths as they are not used in this visualization
+  phy_tree$edge.length <- NULL
+
+  # Explicitly remove branch lengths to prevent ggtree from drawing its own scale
+  phy_tree$edge.length <- NULL
   ### Build a phyloseq object
   physeq <- phyloseq(otu_tab, tax_tab, meta_data, phy_tree)
 
@@ -77,7 +85,7 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     multigrp_strat = TRUE
   )
   ### Plot
-  # Prepare data for plotting
+  # Prepare data for plotting the tree and associated bar plots
   Psq <- physeq_filtered
   tree <- phy_tree(Psq)
   taxdf <- as.data.frame(tax_table(Psq))
@@ -92,22 +100,21 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     mutate(Phylum = if_else(is.na(Phylum) | Phylum %in% c("_", "D_1__", "__"), "Unknown", Phylum),
            Phylum = stringr::str_remove(Phylum, "^D_1__"))
 
-  # build ggtree with a more open layout and add taxon data
+  # Build ggtree with a fan layout and add taxon data
   p <- ggtree(tree, layout = "fan", open.angle = 20, branch.length = "none") %<+% plot_data +
-    # Add tip points colored by Phylum, but hide their legend
-    geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) +
+    geom_tippoint(aes(color = Phylum), linewidth = 1.5, show.legend = FALSE)
+
+  # Start with a completely blank theme and add only what is needed
+  p <- p + theme_void() +
     theme(
+      panel.background = element_rect(fill = "beige", colour = "beige"),
       legend.position = "right",
       legend.title = element_text(size = 11, face = "bold"),
       legend.text = element_text(size = 9),
-      legend.key.size = unit(0.5, "cm"),
-      panel.background = element_rect(fill = "beige", colour = "beige"),
-      # Remove all main panel grid lines to avoid overlap with geom_fruit grid
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank()
+      legend.key.size = unit(0.5, "cm")
     )
 
-  # add the abundance bar plot, now colored by Phylum
+  # Add the abundance bar plot, colored by Phylum
   p <- p +
     geom_fruit(
       # No 'data' argument needed; it inherits from the main plot
@@ -125,17 +132,17 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
         title = "Mean Abundance",
         vjust = 1
       ),
-      grid.params = list(linetype = "dotted", color = "grey80") # Add grid lines here
+      grid.params = list(linetype = "dotted", color = "grey80") # Add grid lines
     )
 
   # Add final theming and a single, styled legend for Phylum
   p <- p +
-    labs(fill = "Phyla") +
-    guides(fill = guide_legend(ncol = 1))
+    labs(fill = "Phyla") + # Set the legend title
+    guides(fill = guide_legend(ncol = 1)) # Ensure single-column legend
 
-  return(p)
+    return(p)
 }
-# Example of how to run the function:
-plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
+### Run the function and print and save plot:
+plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv") 
 print(plot)
 ggsave("reports/figures/plot.png", plot = plot, width = 12, height = 12, dpi = 300)
