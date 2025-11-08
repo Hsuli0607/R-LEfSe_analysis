@@ -28,7 +28,7 @@ library(ggplot2)
 #' @export
 run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
                                         lda_cutoff = 3,
-                                        strict = 1,
+                                        strict = "1",
                                         rarefy_seed = 394582,
                                         abundance_filter_threshold = 1000) {
 
@@ -78,23 +78,20 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
   )
   ### Plot
   # Prepare data for plotting
-  marker_table <- lefse_result@marker_table
   Psq <- physeq_filtered
   tree <- phy_tree(Psq)
   taxdf <- as.data.frame(tax_table(Psq))
-  taxdf$node <- row.names(taxdf)
-  # get data from phyloseq object
-  dat <- psmelt(Psq)
-  # get the relative abundance
-  dat$relab <- dat$Abundance / sample_sums(Psq)[dat$Sample]
-  # join the tax and lefse results
-  dat <- dat %>%
-    left_join(taxdf, by = c("OTU" = "node")) %>%
-    left_join(marker_table, by = c("OTU" = "feature"))
-  # convert character to factor
-  dat$Group <- as.factor(dat$Group)
-  # build ggtree
-  p <- ggtree(tree, layout = "fan") +
+
+  # Create a single, comprehensive data frame for plotting
+  plot_data <- psmelt(Psq) %>%
+    group_by(OTU) %>%
+    summarise(mean_abundance = mean(Abundance), .groups = 'drop') %>%
+    left_join(taxdf %>% mutate(OTU = rownames(.)), by = "OTU")
+
+  # build ggtree with a more open layout and add taxon data
+  p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% plot_data +
+    # Add tip points colored by Phylum, but hide their legend
+    geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) +
     theme(
       legend.position = "right",
       legend.title = element_text(size = 11, face = "bold"),
@@ -103,26 +100,32 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
       panel.background = element_rect(fill = "beige", colour = "beige"),
       panel.grid.major = element_line(colour = "grey90")
     )
-  # add the abundance boxplot
+
+  # add the abundance bar plot, now colored by Phylum
   p <- p +
     geom_fruit(
-      data = dat,
-      geom = geom_boxplot,
+      # No 'data' argument needed; it inherits from the main plot
+      geom = geom_col,
       mapping = aes(
         y = OTU,
-        x = relab,
-        fill = Group
+        x = mean_abundance,
+        fill = Phylum
       ),
-      outlier.size = 0,
-      outlier.stroke = 0,
-      outlier.shape = NA,
+      width = 0.38, # Use 'width' instead of 'pwidth'
+      orientation = "y",
       axis.params = list(
         axis = "x",
         text.size = 2,
-        title = "Relative Abundance"
+        title = "Mean Abundance"
       ),
-      grid.params = list()
+      grid.params = list(linetype = "dotted")
     )
+
+  # Add final theming and a single, styled legend for Phylum
+  p <- p +
+    labs(fill = "Phylum") +
+    guides(fill = guide_legend(ncol = 1, keywidth = 0.8, keyheight = 0.8))
+
   return(p)
 }
 # Example of how to run the function:
