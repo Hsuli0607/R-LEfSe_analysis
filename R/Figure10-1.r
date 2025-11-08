@@ -43,16 +43,17 @@ melt_df <- psmelt(mergedGP)
 # Rename OTU to label so geom_fruit can match to tree tip labels.
 # Note: Don't include Phylum and Order here since they're already in tree data via %<+% taxdf
 melt_simple <- melt_df %>%
-  # CHANGE this filter if you intended Abundance > 120 instead of < 120
+melt_simple <- melt_df %>% # Corrected data preparation
   filter(Abundance < 120) %>%
   select(label = OTU, Sample = Sample, val = Abundance)
+  select(label = OTU, Sample = Sample, val = Abundance, Phylum)
 
 # If your grouping for boxplots is by SampleType, use Sample (which is the merged SampleType).
 # If you prefer grouping by something else, change group mapping below.
 
 # Build ggtree and attach taxon metadata with %<+%
 p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% taxdf +
-  geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE)
+  geom_tippoint(aes(color = Phylum), size = 1.5)
 
 # Add the boxplot "fruit". Use data that contains 'label' column matching tip labels.
 p <- p +
@@ -63,7 +64,9 @@ p <- p +
       y = label,
       x = val,
       group = Sample,   # one box per merged sample type per tip
-      fill = Phylum
+      fill = Phylum     # Use fill for boxplots
+      group = label, # Group by taxon to get one boxplot per tip
+      fill = Phylum  # Color the single boxplot by Phylum
     ),
     linewidth = 0.2,
     outlier.size = 0.5,
@@ -81,13 +84,16 @@ p <- p +
 
 # Final theming
 p <- p +
-  scale_fill_discrete(
-    name = "Phyla",
-    guide = guide_legend(keywidth = 0.8, keyheight = 0.8, ncol = 1)
-  ) +
+  # Use the same aesthetic for color and fill to unify the legend
+  labs(color = "Phyla", fill = "Phyla") +
+  guides(fill = guide_legend(ncol = 1), color = guide_legend(ncol = 1)) +
   theme(
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 7)
+    legend.position = "right",
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text = element_text(size = 9),
+    legend.key.size = unit(0.5, "cm"),
+    panel.background = element_rect(fill = "beige", colour = "beige"),
+    panel.grid.major = element_line(colour = "grey90")
   )
 
 # Print plot
