@@ -102,8 +102,9 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
       legend.text = element_text(size = 9),
       legend.key.size = unit(0.5, "cm"),
       panel.background = element_rect(fill = "beige", colour = "beige"),
-      # Remove the main panel grid to avoid overlap with geom_fruit grid
-      panel.grid.major = element_blank()
+      # Remove all main panel grid lines to avoid overlap with geom_fruit grid
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank()
     )
 
   # add the abundance bar plot, now colored by Phylum
