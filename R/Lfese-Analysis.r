@@ -1,5 +1,4 @@
 ### Load Required Libraries ###
-
 # This script assumes all required packages have been installed.
 # Use install.packages("package_name") or BiocManager::install("package_name") if any are missing.
 
@@ -7,175 +6,93 @@ library(phyloseq)
 library(microbiomeMarker) # For LEfSe analysis
 library(dplyr)
 library(data.table)       # For the fread function
+library(tidyr)
 library(ape)
 
-### Create the phyloseq object from the CSV file
-# This block reads the raw data, parses it into abundance, taxonomy, and metadata,
-# and constructs the phyloseq object required for all subsequent analysis.
 
-# 1. Read the data using data.table for speed
-raw_data_in <- fread("ALL-update.csv")
+#' Run LEfSe Analysis
+#'
+#' This function encapsulates the entire LEfSe analysis workflow, from reading
+#' the input data to performing the analysis.
+#'
+#' @param input_path Path to the input CSV file.
+#' @param lda_cutoff LDA score cutoff for LEfSe analysis. Default is 3.
+#' @param strict Strictness of the LEfSe analysis. Default is "1".
+#' @param transform The transformation to apply to the data. Default is "log10p".
+#' @param abundance_filter_threshold Threshold for filtering taxa by abundance. Default is 1000.
+#' @param sample_min_threshold Minimum number of samples a taxon must be present in. Default is 3.
+#' @param curv Whether to use a curved LDA model. Default is TRUE.
+#' @return A `microbiomeMarker` object containing the LEfSe results.
+run_lefse_analysis <- function(input_path = "data/processed/ALL-update.csv",
+                               lda_cutoff = 3,
+                               strict = "1",
+                               transform = "log10p",
+                               rarefy_seed = 394582,
+                               abundance_filter_threshold = 1000,
+                               sample_min_threshold = 3,
+                               multigrp_strat = FALSE,
+                               curv = FALSE) {
 
-# 2. Separate sample metadata
-sample_info_df <- raw_data_in %>%
-  select(index, Group) %>%
-  as.data.frame()
-rownames(sample_info_df) <- sample_info_df$index
-sample_info_df$index <- NULL # Remove redundant column
-meta_data <- sample_data(sample_info_df)
+  # 1. Read the data using data.table for speed
+  raw_data_in <- fread(input_path)
 
-# 3. Separate abundance data and transpose it
-# Phyloseq requires taxa as rows and samples as columns
-otu_matrix <- raw_data_in %>%
-  select(-index, -Group) %>%
-  as.matrix()
-rownames(otu_matrix) <- rownames(sample_info_df)
-otu_tab <- otu_table(t(otu_matrix), taxa_are_rows = TRUE, errorIfNULL = TRUE)
+  # 2. Separate sample metadata
+  sample_info_df <- raw_data_in %>%
+    select(index, Group) %>%
+    as.data.frame()
+  rownames(sample_info_df) <- sample_info_df$index
+  sample_info_df$index <- NULL # Remove redundant column
+  meta_data <- sample_data(sample_info_df)
 
-# 4. Parse taxonomy strings from column headers
-taxa_names_vec <- colnames(otu_matrix)
-tax_matrix_list <- strsplit(taxa_names_vec, ";")
+  # 3. Separate abundance data and transpose it
+  otu_matrix <- raw_data_in %>%
+    select(-index, -Group) %>%
+    as.matrix()
+  rownames(otu_matrix) <- rownames(sample_info_df)
+  otu_tab <- otu_table(t(otu_matrix), taxa_are_rows = TRUE, errorIfNULL = TRUE)
 
-# Clean prefixes (e.g., "D_0__", "k__") and create a matrix
-tax_matrix_cleaned <- sapply(tax_matrix_list, function(x) {
-  gsub("^[dkpcofgs]__", "", x)
-})
-tax_matrix_cleaned <- t(tax_matrix_cleaned)
-tax_matrix_cleaned[tax_matrix_cleaned == ""] <- NA
+  # 4. Parse taxonomy strings from column headers
+  taxa_df <- data.frame(Taxon = colnames(otu_matrix)) %>%
+    separate(Taxon,
+             into = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"),
+             sep = ";",
+             fill = "right") %>%
+    mutate(across(everything(), ~ gsub("^[dkpcofgs]_[0-9]__", "", .))) %>%
+    mutate(across(everything(), ~ na_if(., "")))
+  rownames(taxa_df) <- colnames(otu_matrix)
+  tax_tab <- phyloseq::tax_table(as.matrix(taxa_df))
 
-# Assign standard rank names
-rank_names <- c(
-  "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"
-)
-colnames(tax_matrix_cleaned) <- rank_names[seq_len(ncol(tax_matrix_cleaned))]
-rownames(tax_matrix_cleaned) <- taxa_names_vec
+  # Create an unrooted tree from taxa abundance profiles
+  taxa_dist <- dist(otu_tab)
+  phy_tree <- ape::nj(taxa_dist)
 
-# Create the tax_table for the phyloseq object
-tax_tab <- phyloseq::tax_table(tax_matrix_cleaned)
+  # Build a phyloseq object
+  physeq <- phyloseq(otu_tab, tax_tab, meta_data, phy_tree)
 
-# Create an unrooted tree from taxa abundance profiles
-taxa_dist <- dist(otu_tab)
-phy_tree <- ape::nj(taxa_dist)
+  # Filter taxa before running LEfSe
+  physeq_ab_filtered <- prune_taxa(taxa_sums(physeq) > abundance_filter_threshold, physeq)
+  physeq_filtered <- prune_taxa(rowSums(otu_table(physeq_ab_filtered) > 0) >= 3, physeq_ab_filtered)
 
-### Build a phyloseq object
-physeq <- phyloseq(otu_tab, tax_tab, meta_data, phy_tree)
-
-### Run LEfSe analysis by using run_lefse
-lefse_result <- run_lefse(physeq, group = "Group", lda_cutoff = 3, strict = "1")
-
-
-### Plot
-library(ggtree)
-library(ggtreeExtra) # To support the outer rings of a tree in a circular layout
-library(ggplot2)
-
-# Prepare data for plotting
-Psq <- physeq
-Psq <- prune_taxa(taxa_sums(Psq) > 1000, Psq)
-
-# Fix: merge_samples() is fundamentally broken when sample_data contains non-numeric columns
-# Instead of using merge_samples, we manually aggregate OTU table and create new phyloseq object
-# This avoids the "NAs introduced by coercion" warnings and dimension corruption issues
-
-# Get the grouping variable
-grouping_var <- as.character(sample_data(Psq)$Group)
-
-# Manually aggregate OTU table by group
-otu_mat <- as(otu_table(Psq), "matrix")
-if (!taxa_are_rows(Psq)) {
-  otu_mat <- t(otu_mat)
-}
-
-# Sum abundances within each group
-groups <- unique(grouping_var)
-merged_otu <- matrix(0, nrow = nrow(otu_mat), ncol = length(groups))
-rownames(merged_otu) <- rownames(otu_mat)
-colnames(merged_otu) <- groups
-
-for (grp in groups) {
-  samples_in_group <- which(grouping_var == grp)
-  if (length(samples_in_group) == 1) {
-    merged_otu[, grp] <- otu_mat[, samples_in_group]
-  } else {
-    merged_otu[, grp] <- rowSums(otu_mat[, samples_in_group])
-  }
-}
-
-# Create new phyloseq object with merged data
-merged_otu_table <- otu_table(merged_otu, taxa_are_rows = TRUE)
-merged_sample_data <- data.frame(
-  Group = groups,
-  row.names = groups,
-  stringsAsFactors = FALSE
-)
-merged_sample_data <- sample_data(merged_sample_data)
-
-# Build the merged phyloseq object (reuse tax_table and tree from original)
-MergedPsq <- phyloseq(
-  merged_otu_table,
-  tax_table(Psq),
-  merged_sample_data,
-  phy_tree(Psq)
-)
-
-# Rarefy merged samples to normalize group-level abundances for visualization
-MergedPsq <- rarefy_even_depth(MergedPsq, rngseed = 394582)
-
-# Create melted data frame with corrected column names
-melt_simple <- psmelt(MergedPsq) %>% 
-  filter(Abundance < 120) %>% 
-  select(OTU, val = Abundance)
-
-# Create fan tree box plot with phyla coloring
-# Extract the tree from phyloseq object before merging (to preserve tree structure)
-tree <- phy_tree(Psq)
-
-# Get taxonomy information for coloring by Phylum
-# Create a data frame with taxonomy info where label column matches tree tip labels
-tax_df <- as.data.frame(tax_table(Psq))
-# Add label column that exactly matches tree$tip.label for proper joining
-tax_df$label <- rownames(tax_df)
-
-# Debug: Print some diagnostic information
-cat("Number of tree tips:", length(tree$tip.label), "\n")
-cat("Number of taxa:", nrow(tax_df), "\n")
-cat("First 5 tree tip labels:", head(tree$tip.label, 5), "\n")
-cat("First 5 taxonomy labels:", head(tax_df$label, 5), "\n")
-cat("Unique Phyla found:", length(unique(tax_df$Phylum[!is.na(tax_df$Phylum)])), "\n")
-cat("Phylum values sample:", head(unique(tax_df$Phylum), 10), "\n")
-
-# Create the base ggtree plot with fan layout
-# Using layout = "fan" with open.angle = 10 for a wedge-shaped tree
-p <- ggtree(tree, layout = "fan", open.angle = 10)
-
-# Join the taxonomy data - ggtree uses the 'label' column to match tree tip labels
-p <- p %<+% tax_df
-
-# Add colored tip points by Phylum
-p <- p + geom_tippoint(aes(color = Phylum), size = 2, alpha = 0.8) +
-  theme(legend.position = "right",
-        legend.title = element_text(size = 11, face = "bold"),
-        legend.text = element_text(size = 9),
-        legend.key.size = unit(0.5, "cm")) +
-  guides(color = guide_legend(override.aes = list(size = 4, alpha = 1)))
-
-# Add abundance data as boxplot layer using ggtreeExtra
-p <- p + 
-  geom_fruit(
-    data = melt_simple,
-    geom = geom_boxplot,
-    mapping = aes(y = OTU, x = val),
-    orientation = "y",
-    pwidth = 0.3,
-    axis.params = list(
-      axis = "x",
-      text.size = 3,
-      title = "Abundance"
-    )
+  # Run LEfSe analysis
+  lefse_result <- run_lefse(physeq_filtered,
+    group = "Group",
+    transform = transform,
+    lda_cutoff = lda_cutoff,
+    strict = strict,
+    multigrp_strat = multigrp_strat,
+    sample_min = sample_min_threshold,
+    curv = curv
   )
+  
+  return(lefse_result)
+}
 
-# Display the plot
-print(p)
+### --- Execute Analysis --- ###
+# Call the function to run the analysis and store the results
+lefse_result <- run_lefse_analysis()
 
-# Optionally save the plot
-# ggsave("fan_tree_boxplot.pdf", plot = p, width = 12, height = 12)
+# You can now inspect the results, for example:
+marker <- print(marker_table(lefse_result))
+
+
+

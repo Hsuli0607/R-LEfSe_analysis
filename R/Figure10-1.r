@@ -43,7 +43,6 @@ melt_df <- psmelt(mergedGP)
 # Rename OTU to label so geom_fruit can match to tree tip labels.
 # Note: Don't include Phylum and Order here since they're already in tree data via %<+% taxdf
 melt_simple <- melt_df %>%
-  # CHANGE this filter if you intended Abundance > 120 instead of < 120
   filter(Abundance < 120) %>%
   select(label = OTU, Sample = Sample, val = Abundance)
 
@@ -52,7 +51,7 @@ melt_simple <- melt_df %>%
 
 # Build ggtree and attach taxon metadata with %<+%
 p <- ggtree(tree, layout = "fan", open.angle = 10) %<+% taxdf +
-  geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE)
+  geom_tippoint(aes(color = Phylum), size = 1.5, show.legend = FALSE) # Points are colored, but don't generate a legend
 
 # Add the boxplot "fruit". Use data that contains 'label' column matching tip labels.
 p <- p +
@@ -62,8 +61,8 @@ p <- p +
     mapping = aes(
       y = label,
       x = val,
-      group = Sample,   # one box per merged sample type per tip
-      fill = Phylum
+      group = label, # Group by taxon to get one boxplot per tip
+      fill = Phylum  # Use Phylum for fill color
     ),
     linewidth = 0.2,
     outlier.size = 0.5,
@@ -81,20 +80,23 @@ p <- p +
 
 # Final theming
 p <- p +
-  scale_fill_discrete(
-    name = "Phyla",
-    guide = guide_legend(keywidth = 0.8, keyheight = 0.8, ncol = 1)
-  ) +
+  labs(fill = "Phyla") + # Set the title for the boxplot legend
+  # Make the legend keys match the boxplots (colored fill with a black outline)
+  guides(fill = guide_legend(ncol = 1, override.aes = list(color = "black"))) +
   theme(
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 7)
+    legend.position = "right",
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text = element_text(size = 9),
+    legend.key.size = unit(0.5, "cm"),
+    panel.background = element_rect(fill = "beige", colour = "beige"),
+    panel.grid.major = element_line(colour = "grey90")
   )
 
 # Print plot
 print(p)
 
 # save plot to 
-gsave("reports/figures/Figure-10.png",
+ggsave("reports/figures/Figure-10.png",
   plot = p, width = 12, height = 12, dpi = 300
 )
  
