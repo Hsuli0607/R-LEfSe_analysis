@@ -34,7 +34,10 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
                                         strict = "1",
                                         rarefy_seed = 394582,
                                         abundance_filter_threshold = 1000,
-                                        transform = "log10p") {
+                                        transform = "log10p",
+                                        multigrp_strat = FALSE,
+                                        curv = FALSE,
+                                        sample_min_threshold = 3) {
 
   ### Create the phyloseq object from the CSV file
   # This block reads the raw data, parses it into abundance, taxonomy, and metadata,
@@ -87,7 +90,7 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     transform = transform,
     lda_cutoff = lda_cutoff,
     strict = strict,
-    multigrp_strat = TRUE
+    multigrp_strat = FALSE
   )
   
   # Extract the marker data to link taxa to their enriched group
