@@ -91,7 +91,7 @@ run_lefse_analysis <- function(input_path = "data/processed/ALL-update.csv",
 # Call the function to run the analysis and store the results
 lefse_result <- run_lefse_analysis()
 
-# You can now inspect the results, for example:
+# Inspect the lefse results marker table:
 marker <- print(marker_table(lefse_result))
 
 
