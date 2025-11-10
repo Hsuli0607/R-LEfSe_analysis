@@ -6,7 +6,6 @@
 #' @param sample_min_threshold Minimum number of samples a taxon must be present in. Default is 3.
 #' @param curv Whether to use a curved LDA model. Default is TRUE.
 #' @return A `microbiomeMarker` object containing the LEfSe results.
-
 ### LEfSe Analysis Function
 lefse_analysis <- function(
                             physeq_object = physeq_filtered,

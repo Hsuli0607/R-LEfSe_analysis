@@ -1,18 +1,12 @@
-### Load Required Libraries ###
-# This script assumes all required packages have been installed.
-# Use install.packages("package_name") or BiocManager::install("package_name") if any are missing.
-
-library(phyloseq)
-library(microbiomeMarker) # For LEfSe analysis
-library(dplyr)
-library(data.table)       # For the fread function
-library(tidyr)
-library(ape)
+source("R/check_and_load_packages.r")
+source("R/generate_physeq_obj.r")
+source("R/subset_physeq_obj.r")
+library(MicrobiotaProcess)
 
 
 
 
-lefse_result <- lefse_analysis(physeq_object = physeq)
+
 
 
 

@@ -1,4 +1,4 @@
-### Check and Load Required Packages Function (Original Version)
+#' Check and Load Required Packages Function (Original Version)
 #'
 #' This function checks if specified R packages are installed. If any are not
 #' installed, it stops execution and prompts the user to install them.
