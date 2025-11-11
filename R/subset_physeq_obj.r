@@ -16,8 +16,8 @@
 #'
 #' @return A new, filtered, and subsetted phyloseq object.
 subset_physeq_obj <- function(
-                           physeq_obj = physeq_obj,
-                           class_col = "Group",
+                           physeq_obj = NULL,
+                           sample_col = "Group",
                            subset_vals = c("EHI", "EHI.abt"),
                            abundance_filter_threshold = 1000,
                            prevalence_filter_threshold = 3
@@ -32,7 +32,8 @@ subset_physeq_obj <- function(
   physeq_prev_filtered <- prune_taxa(rowSums(otu_table(physeq_ab_filtered) > 0) >= prevalence_filter_threshold, physeq_ab_filtered)
 
   # Finally, subset the fully filtered data to the groups of interest for the pairwise comparison
-  physeq_filtered <- subset_samples(physeq_prev_filtered, class_col %in% subset_vals)
+  # We use .data[[class_col]] to correctly evaluate the column name passed as a string
+  physeq_filtered <- phyloseq::subset_samples(physeq_prev_filtered, sample_col %in% subset_vals)
   
   return(physeq_filtered)
 }

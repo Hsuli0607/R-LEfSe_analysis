@@ -41,7 +41,3 @@ ggdiffclad_nodedf <- function(sub_physeq = NULL, classgroup = NULL, mlfun = "lda
 }
 
 
-# The `diff_analysis()` function is part of the `MicrobiotaProcess` package.
-# It is called internally by `ggdiffclad_nodedf` and is not typically called directly
-# by the user in this workflow.
-# diff_analysis()
