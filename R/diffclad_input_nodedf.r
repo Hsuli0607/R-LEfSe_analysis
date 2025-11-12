@@ -14,20 +14,30 @@
 #' # Assuming 'physeq_filtered' is a phyloseq object
 #' # diffclade_obj <- ggdiffclade_input_obj(subset_physeq = physeq_filtered)
 #' }
-
-
-ggdiffclade_obj <- function(subset_physeq = subset_physeq)
+crt_diffclad_nodedf <- function(subset_physeq)
                                   {
   # 0. Check and load required packages
   # Ensure 'MicrobiotaProcess' is loaded for 'as.treedata'
-  required_package <- c("MicrobiotaProcess")
+  required_package <- c("MicrobiotaProcess", "phyloseq", "stringr")
   check_and_load_packages(required_package)
 
   # Extract the taxonomy table from the phyloseq object
+  message("Extracting taxonomy table...")
+  tax_tab <- phyloseq::tax_table(subset_physeq)
 
-Tax_tab <- tax_table(subset_physeq)
-ggdiffclad_obj <- as.treedata(Tax_tab)
+  # Convert the taxonomy table to dataframe
+  message("Converting to dataframe...")
+  df_tax_tab <- as.data.frame(tax_tab)
 
-return(ggdiffclade_obj)
+  # Transform to nodedf
+  message("Converting to nodedf...")
 
+  tax_cols <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+  diffclad_nodedf <- df_tax_tab %>%
+  mutate(across(all_of(tax_cols), ~ str_remove(., "^.*__")))
+
+  message("Done.")
+  return(diffclad_nodedf)
+ 
 }
+

@@ -170,8 +170,12 @@ run_lefse_analysis_and_plot <- function(input_path = "ALL-update.csv",
     labs(fill = "Phyla") + # Set the legend title
     guides(fill = guide_legend(ncol = 1)) # Ensure single-column legend
     return(p)
+   
 }
 ### Run the function and print and save plot:
 plot <- run_lefse_analysis_and_plot(input_path = "data/processed/ALL-update.csv")
 print(plot)
-ggsave("reports/figures/plot.png", plot = plot, width = 12, height = 12, dpi = 300)git branch -vv
+ggsave("reports/figures/plot.png", plot = plot, width = 12, height = 12, dpi = 300)
+
+
+
