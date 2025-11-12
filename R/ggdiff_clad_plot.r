@@ -50,6 +50,8 @@ p <- ggdiffclade(obj = diffclad_nodedf,
                 skpointsize = 0.6,
                 cladetext = 2,
                 linewd = 0.2,
+                reduce = TRUE,
+                taxlevel = 3
                 ) +
     scale_fill_manual(values = c("#00AED7", "#009E73")) +
     guides(color = guide_legend(
@@ -62,10 +64,14 @@ p <- ggdiffclade(obj = diffclad_nodedf,
         panel.background = element_rect(fill = NA),
         legend.position = "right",
         plot.margin = margin(0, 0, 0, 0),
-        legend.spacing.y = unit(0.02, "cm"),
+        legend.spacing.y = unit(0.5, "cm"),
         legend.title = element_text(size = 7.5),
         legend.text = element_text(size = 5.5),
-        legend.box.spacing = unit(0.02, "cm")
+        legend.box.spacing = unit(0, "cm")
     )
 
 print(p)
+
+ggsave("reports/figures/diff_clade_EHI.png", plot = p, width = 12, height = 12, dpi = 600)
+
+

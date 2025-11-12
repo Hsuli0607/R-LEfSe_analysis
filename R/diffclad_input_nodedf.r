@@ -35,9 +35,10 @@ crt_diffclad_nodedf <- function(subset_physeq)
   tax_cols <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
   diffclad_nodedf <- df_tax_tab %>%
   mutate(across(all_of(tax_cols), ~ str_remove(., "^.*__")))
+  
+  rownames(diffclad_nodedf) <- 1:nrow(diffclad_nodedf)
 
   message("Done.")
   return(diffclad_nodedf)
  
 }
-

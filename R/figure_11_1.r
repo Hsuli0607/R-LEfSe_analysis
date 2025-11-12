@@ -2,7 +2,7 @@ library(TDbook)
 taxa <- df_alltax_info
 dt <- df_difftax
 p <- ggdiffclade(obj = taxa,
-                nodedf = dt,  
+                nodedf = dt,
                 factorName = "DIAGNOSIS",
                 layout = "radial",
                 skpointsize = 0.6,
@@ -21,31 +21,15 @@ p <- ggdiffclade(obj = taxa,
     theme(
         panel.background = element_rect(fill = NA),
         legend.position = "right",
-        plot.margin = margin(0, 0, 0, 0),
-        legend.spacing.y = unit(0.02, "cm"),
+        plot.margin = margin(0, 0, 0, 0, "cm"),
+        legend.spacing.y = unit(0.5, "cm"),
         legend.title = element_text(size = 7.5),
         legend.text = element_text(size = 5.5),
-        legend.box.spacing = unit(0.02, "cm")
+        legend.box.spacing = unit(0, "cm")
     )
 
 print(p)
 
-
-diffclad_obj <- diff_analysis(
-                                subset_physeq,
-                                classgroup = "Group",
-                                mlfun = "lda",
-                                ldascore = 3,
-                                normalization = 1000000,
-                                clmin=1
-                              )
-
-df_diffclad_obj <- as.data.frame(diffclad_obj)
-
-
-
-diffclade_obj <- grt_ggdiffclade_obj(subset_physeq)
-df_diffclade_obj <- as.data.frame(diffclade_obj)
-tax_cols <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+ggsave("reports/figures/figure_11_1.png", plot = p, width = 12, height = 12, dpi = 300)
 
 
