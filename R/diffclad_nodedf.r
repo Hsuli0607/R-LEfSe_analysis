@@ -16,7 +16,7 @@
 #' @param normalization A numeric value for normalizing abundance data. Default is 1,000,000.
 #' @return A data frame containing the differential analysis results, including LDA scores,
 #'         p-values, and enriched groups for each feature, ready for cladogram plotting.
-crt_diffclad_obj <- function(obj, classgroup, mlfun = "lda", ldascore = 3,
+crt_diffclad_nodedf <- function(obj, classgroup, mlfun = "lda", ldascore = 3,
                               type = "species", normalization = 1000000) {
   # 0. Check and load required packages
   # Ensure 'MicrobiotaProcess' is loaded for 'as.treedata'
@@ -27,7 +27,7 @@ crt_diffclad_obj <- function(obj, classgroup, mlfun = "lda", ldascore = 3,
   # This function identifies features (taxa) that are significantly different
   # between the specified `classgroup` categories.
   message("Performing differential abundance analysis...")
-  diffclad_obj <- diff_analysis(obj,
+  diffclad_nodedf <- diff_analysis(obj,
                                 classgroup,
                                 mlfun = mlfun,
                                 ldascore = ldascore,
@@ -35,14 +35,16 @@ crt_diffclad_obj <- function(obj, classgroup, mlfun = "lda", ldascore = 3,
                                 type = type,
                                 clmin = 1
                                     )
-  df_diffclad_obj <- as.data.frame(diffclad_obj) %>% 
-                      mutate(f = gsub("D_[0-9]__", "", f))
+  df_diffclad_nodedf <- as.data.frame(diffclad_nodedf) %>% 
+                      mutate(f = gsub("D_[0-9]__", "", f)) %>%
+                      dplyr::select(f,Group, pvalue)
+ 
  
 
   # Return the result, which is a data frame containing the differential analysis
   # results, typically including LDA scores, p-values, and enriched groups for each feature.
   message("Done.")
-  return(df_diffclad_obj) 
+  return(df_diffclad_nodedf) 
                                
 }
 
